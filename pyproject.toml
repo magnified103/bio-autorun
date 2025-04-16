@@ -1,0 +1,18 @@
+[build-system]
+requires = ["setuptools"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "bio-autorun"
+version = "0.0.1"
+description = "Automated tool for running biology experiments"
+readme = "README.md"
+requires-python = ">=3.8"
+dependencies = [
+    "numpy",
+    "matplotlib"
+]
+
+[project.urls]
+Homepage = "https://github.com/magnified103/bio-autorun"
+Issues = "https://github.com/magnified103/bio-autorun/issues"

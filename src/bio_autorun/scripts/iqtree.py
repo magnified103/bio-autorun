@@ -40,6 +40,7 @@ def main():
     settings = import_settings(args.settings)
 
     # the settings.py should define the following variables:
+    # - WORKERS: the number of workers
     # - DATA_DIR: the directory containing the data files
     # - OUTPUT_DIR: the directory to save the output files
     # - SEEDS: a list of integers indicating the initial seeds
@@ -56,7 +57,7 @@ def main():
         raise RuntimeError("Output directory already exists.")
     os.makedirs(settings.OUTPUT_DIR)
 
-    config = LocalExecutorConfig(max_workers=4)
+    config = LocalExecutorConfig(max_workers=settings.WORKERS)
     executor = LocalExecutor(config)
     # executor.event_subscribe(JobStatus.SUBMITTED, lambda job: logging.info(f"Job {job} submitted"))
     executor.event_subscribe(JobStatus.QUEUED, lambda job: logging.info(f"Job {job} queued"))

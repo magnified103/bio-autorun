@@ -33,7 +33,10 @@ def main():
     )
     parser.add_argument("--log-file", default="iqtree.log", help="Path to the log file")
     args = parser.parse_args()
-    logging.basicConfig(filename=args.log_file, level=logging.INFO)
+    logging.basicConfig(level=logging.INFO, handlers=[
+        logging.FileHandler(args.log_file),
+        logging.StreamHandler()
+    ])
     settings = import_settings(args.settings)
 
     # the settings.py should define the following variables:

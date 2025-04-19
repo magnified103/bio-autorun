@@ -46,7 +46,7 @@ class LocalExecutor(Executor):
         return super().exit_loop(exc_type, exc_value, traceback)
 
     def _run_job(self, job: LocalJob):
-        proc = subprocess.Popen(job.cmd, cwd=job.cwd, env=job.env, start_new_session=True, shell=job.shell,
+        proc = subprocess.Popen(job.cmd, cwd=job.cwd, env=job.env, shell=job.shell,
                                 stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
         job.pid = proc.pid
         job.start_time = datetime.now()

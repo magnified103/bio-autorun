@@ -49,12 +49,13 @@ class LocalExecutor(Executor):
         proc = subprocess.Popen(job.cmd, cwd=job.cwd, env=job.env, start_new_session=True, shell=job.shell,
                                 stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
         job.pid = proc.pid
+        job.start_time = datetime.now()
         self.event_publish(JobStatus.STARTED, job)
 
         # wait for the job to finish
         proc.wait()
 
-        job.finished_time = datetime.now()
+        job.end_time = datetime.now()
         job.status = JobStatus.COMPLETED
         job.exit_code = proc.returncode
         self.event_publish(JobStatus.COMPLETED, job)

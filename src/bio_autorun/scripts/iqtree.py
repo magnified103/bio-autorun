@@ -58,7 +58,7 @@ def main():
     # executor.event_subscribe(JobStatus.SUBMITTED, lambda job: logging.info(f"Job {job} submitted"))
     executor.event_subscribe(JobStatus.QUEUED, lambda job: logging.info(f"Job {job} queued"))
     executor.event_subscribe(JobStatus.STARTED, lambda job: logging.info(f"Job {job} started at {job.start_time}"))
-    executor.event_subscribe(JobStatus.COMPLETED, lambda job: logging.info(f"Job {job} completed at {job.end_time}"))
+    executor.event_subscribe(JobStatus.COMPLETED, lambda job: logging.info(f"Job {job} ended at {job.end_time}, exit code: {job.exit_code}"))
 
     with executor.acquire():
         for command_name, command_str in settings.COMMANDS.items():

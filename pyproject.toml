@@ -16,3 +16,6 @@ dependencies = [
 [project.urls]
 Homepage = "https://github.com/magnified103/bio-autorun"
 Issues = "https://github.com/magnified103/bio-autorun/issues"
+
+[project.scripts]
+autorun_iqtree = "bio_autorun.scripts.iqtree:main"

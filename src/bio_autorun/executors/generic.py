@@ -19,15 +19,19 @@ class Executor:
         self._event_loop_worker.start()
 
     def exit_loop(self, exc_type=None, exc_value=None, traceback=None):
-        self._event_queue.join()
         self._event_queue.close()
+        self._event_queue.join()
         self._event_loop_worker.terminate()
         self._event_loop_worker.join()
-        if exc_type:
+        if exc_type is not None:
             raise exc_type(exc_value).with_traceback(traceback)
 
     @contextmanager
     def acquire(self):
+        """
+        Return a context manager that will start the executor and stop it when done.
+        :return:
+        """
         self.enter_loop()
         try:
             yield
@@ -37,6 +41,12 @@ class Executor:
             return self.exit_loop()
 
     def event_subscribe(self, status: JobStatus, callback):
+        """
+        Subscribe to a job event. All callbacks will be executed in a separate process.
+        :param status:
+        :param callback:
+        :return:
+        """
         self._event_subscriptions.append((status, callback))
 
     def event_publish(self, status: JobStatus, job: Job):
@@ -44,7 +54,10 @@ class Executor:
 
     def _event_loop(self):
         while True:
-            status, job = self._event_queue.get()
+            try:
+                status, job = self._event_queue.get()
+            except:
+                break
             for s, callback in self._event_subscriptions:
                 if s == status:
                     callback(job)

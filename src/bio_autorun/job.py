@@ -7,13 +7,15 @@ class JobStatus(StrEnum):
     PENDING = "pending"
     SUBMITTED = "submitted"
     QUEUED = "queued"
-    RUNNING = "running"
+    STARTED = "started"
     COMPLETED = "completed"
     CANCELLED = "cancelled"
 
 
 class Job:
-    def __init__(self, *, name: str, cmd: str, args: Iterable[str], env: Optional[dict[str, str]] = None, cwd: Optional[str] = None,
+    def __init__(self, *, name: str, cmd: str | list[str], env: Optional[dict[str, str]] = None,
+                 cwd: Optional[str] = None,
+                 shell=False,
                  status: JobStatus = JobStatus.PENDING,
                  exit_code: Optional[int] = None,
                  submitted_time: Optional[datetime] = None, queued_time: Optional[datetime] = None,
@@ -21,9 +23,9 @@ class Job:
                  ):
         self.name = name
         self.cmd = cmd
-        self.args = list(args)
         self.env = env
         self.cwd = cwd
+        self.shell = shell
         self.status = status
         self.submitted_time = submitted_time
         self.queued_time = queued_time

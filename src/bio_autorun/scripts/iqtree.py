@@ -28,7 +28,7 @@ def main():
     parser.add_argument(
         "-s",
         "--settings",
-        required=True,
+        default="settings.py",
         help="Path to the settings.py file to import"
     )
     parser.add_argument("--log-file", default="iqtree.log", help="Path to the log file")
@@ -46,6 +46,7 @@ def main():
     # - SEEDS: a list of integers indicating the initial seeds
     # - COMMANDS: a dictionary where keys and values are the command names and their corresponding command strings
     # - MODELS: a dictionary mapping the data files to the optimal models
+    # - ITERS: a dictionary mapping the data files to the number of iterations (optional)
 
     data_names = get_data_file(settings.DATA_DIR)
     logger.info(f"Data files found: {len(data_names)}")
@@ -70,5 +71,7 @@ def main():
                 for data in data_names:
                     job_name = f"{data}_{command_name}_{seed}"
                     job_cmd = f"{command_str} -s {os.path.join(settings.DATA_DIR, data)} -m {settings.MODELS[data]} --prefix {os.path.join(settings.OUTPUT_DIR, job_name)} --seed {seed}"
+                    if data in settings.ITERS:
+                        job_cmd += f" -n {settings.ITERS[data]}"
                     job = Job(name=job_name, cmd=job_cmd, shell=True)
                     executor.submit(job)

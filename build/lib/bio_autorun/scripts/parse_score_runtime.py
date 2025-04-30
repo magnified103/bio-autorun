@@ -59,8 +59,6 @@ def main():
     for command_name in settings.COMMANDS.keys():
         for seed in settings.SEEDS:
             for data in data_names:
-                if data in settings.SKIPPED_DATA:
-                    continue
                 log_file = os.path.join(settings.OUTPUT_DIR, f"{data}_{command_name}_{seed}.log")
                 try:
                     score, time, iters = parse_best_score_and_cpu_time(log_file)
@@ -77,8 +75,6 @@ def main():
             writer.writerow(labels)
             sum_time = 0
             for data in data_names:
-                if data in settings.SKIPPED_DATA:
-                    continue
                 list_score = []
                 list_time = []
                 list_iters = []
@@ -94,15 +90,12 @@ def main():
                 sum_time += avg_time
             print(f"Total time for {command_name}: {sum_time}")
     
-    if len(settings.COMMANDS) >= 2:
-
+    if len(settings.COMMANDS) == 2:
         # do comparison
-        x = [[] for _ in range(len(settings.COMMANDS))]
-        y = [[] for _ in range(len(settings.COMMANDS))]
+        x = []
+        y = []
 
         for data in data_names:
-            if data in settings.SKIPPED_DATA:
-                continue
             datas = []
             for index, command_name in enumerate(settings.COMMANDS.keys()):
                 list_score = []
@@ -116,37 +109,20 @@ def main():
                 avg_time = sum(list_time) / len(list_time)
                 avg_iters = round(sum(list_iters) / len(list_iters))
                 datas.append((avg_score, avg_time))
-
-            for i in range(1, len(settings.COMMANDS)):
-                diff_score = datas[i][0] - datas[0][0]
-                diff_time = (datas[i][1] - datas[0][1]) / 60
-                # print(diff_time, datas[1][1], datas[0][1])
-                x[i].append(diff_score)
-                y[i].append(diff_time)
-        for i in range(1, len(settings.COMMANDS)):
-            plt.clf()
-            plt.scatter(x[i], y[i], s=3)
-            plt.title(f"Compare {list(settings.COMMANDS)[i]} with {list(settings.COMMANDS)[0]}")
-            plt.xlabel("Difference in Score")
-            plt.ylabel("Difference in Time (minutes)")
-            plt.savefig(f"{list(settings.COMMANDS)[i]}.png")
-            print("==========")
-            og_better = 0
-            cur_better = 0
-            for diff_score in x[i]:
-                if abs(diff_score) > 0.1:
-                    if diff_score > 0:
-                        cur_better += 1
-                    else:
-                        og_better += 1
-            print(f"{list(settings.COMMANDS)[i]} better: {cur_better}, {list(settings.COMMANDS)[0]} better: {og_better}")
+            assert len(datas) == 2
+            diff_score = datas[1][0] - datas[0][0]
+            diff_time = (datas[1][1] - datas[0][1]) / 60
+            # print(diff_time, datas[1][1], datas[0][1])
+            x.append(diff_score)
+            y.append(diff_time)
+        plt.scatter(x, y, s=3)
+        plt.savefig("test.png")
+        
     
     if args.print_iter_map:
         assert len(settings.COMMANDS) == 1, "Iter mapping only supports one experiment"
         for command_name in settings.COMMANDS.keys():
             for data in data_names:
-                if data in settings.SKIPPED_DATA:
-                    continue
                 list_iters = []
                 for seed in settings.SEEDS:
                     list_iters.append(dict_iters[(command_name, data, seed)])

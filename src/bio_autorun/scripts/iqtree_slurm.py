@@ -3,9 +3,6 @@ import importlib.util
 import logging
 import os
 
-from bio_autorun.executors.local import LocalExecutor, LocalExecutorConfig
-from bio_autorun.job import Job, JobStatus
-
 
 def import_settings(settings_path):
     spec = importlib.util.spec_from_file_location("settings", settings_path)
@@ -31,6 +28,7 @@ def main():
         default="settings.py",
         help="Path to the settings.py file to import"
     )
+    parser.add_argument("--slurm-output", default="job.sh", help="Path to the slurm output file", type=argparse.FileType("w"))
     parser.add_argument("--only-skipped", action="store_true", help="Only run skipped data")
     parser.add_argument("-o", "--output", default="iqtree.cmd", help="Path to the output script", type=argparse.FileType("w"))
     parser.add_argument("--log-file", default="iqtree.log", help="Path to the log file")
@@ -42,6 +40,7 @@ def main():
     settings = import_settings(args.settings)
 
     # the settings.py should define the following variables:
+    # - NAME: the name of the experiment
     # - WORKERS: the number of workers
     # - DATA_DIR: the directory containing the data files
     # - OUTPUT_DIR: the directory to save the output files
@@ -57,9 +56,12 @@ def main():
         if data not in settings.MODELS:
             raise RuntimeError(f"Data file {data} not found in models mapping.")
 
-    # if os.path.exists(settings.OUTPUT_DIR):
-    #     raise RuntimeError("Output directory already exists.")
-    # os.makedirs(settings.OUTPUT_DIR)
+    if os.path.exists(settings.OUTPUT_DIR):
+        logger.warning("Output directory already exists.")
+    else:
+        os.makedirs(settings.OUTPUT_DIR)
+
+    number_of_jobs = 0
 
     for command_name, command_str in settings.COMMANDS.items():
         for seed in settings.SEEDS:
@@ -73,3 +75,13 @@ def main():
                 if data in settings.ITERS:
                     job_cmd += f" -n {settings.ITERS[data]}"
                 args.output.write(job_cmd + "\n")
+                number_of_jobs += 1
+
+    args.slurm_output.write("#!/bin/bash\n")
+    args.slurm_output.write(f"#SBATCH --job-name={settings.NAME}\n")
+    args.slurm_output.write(f"#SBATCH --ntasks=1\n")
+    args.slurm_output.write(f"#SBATCH --cpus-per-task=1\n")
+    args.slurm_output.write(f"#SBATCH --array=1-{number_of_jobs}\n")
+    args.slurm_output.write(f"#SBATCH --output=slurm-log/slurm-%A_%a.out\n")
+    args.slurm_output.write(f"command=$(sed \"${{SLURM_ARRAY_TASK_ID}}q;d\" {args.output.name})\n")
+    args.slurm_output.write("$command\n")

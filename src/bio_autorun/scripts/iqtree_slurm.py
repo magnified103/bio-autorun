@@ -70,8 +70,14 @@ def main():
                     continue
                 if not args.only_skipped and data in settings.SKIPPED_DATA:
                     continue
+                if settings.INCLUDED_DATA is not None and data not in settings.INCLUDED_DATA:
+                    continue
                 job_name = f"{data}_{command_name}_{seed}"
-                job_cmd = f"{command_str} -s {os.path.join(settings.DATA_DIR, data)} -m {settings.MODELS[data]} --prefix {os.path.join(settings.OUTPUT_DIR, job_name)} --seed {seed}"
+                prefix = os.path.join(settings.OUTPUT_DIR, job_name)
+                if os.path.exists(prefix + ".iqtree"):
+                    logger.info(f"Job {job_name} already exists. Skipping.")
+                    continue
+                job_cmd = f"{command_str} -s {os.path.join(settings.DATA_DIR, data)} -m {settings.MODELS[data]} --prefix {prefix} --seed {seed}"
                 if data in settings.ITERS:
                     job_cmd += f" -n {settings.ITERS[data]}"
                 args.output.write(job_cmd + "\n")
@@ -84,4 +90,4 @@ def main():
     args.slurm_output.write(f"#SBATCH --array=1-{number_of_jobs}\n")
     args.slurm_output.write(f"#SBATCH --output=slurm-log/slurm-%A_%a.out\n")
     args.slurm_output.write(f"command=$(sed \"${{SLURM_ARRAY_TASK_ID}}q;d\" {args.output.name})\n")
-    args.slurm_output.write("$command\n")
+    args.slurm_output.write("eval $command\n")

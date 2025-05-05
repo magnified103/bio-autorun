@@ -46,6 +46,7 @@ def main():
         default="settings.py",
         help="Path to the settings.py file to import"
     )
+    parser.add_argument("--include-skipped", action="store_true", help="Include skipped data in the output")
     parser.add_argument("--print-iter-map", action="store_true", help="Print the iteration mapping")
     args = parser.parse_args()
 
@@ -59,7 +60,9 @@ def main():
     for command_name in settings.COMMANDS.keys():
         for seed in settings.SEEDS:
             for data in data_names:
-                if data in settings.SKIPPED_DATA:
+                if data in settings.SKIPPED_DATA and not args.include_skipped:
+                    continue
+                if settings.INCLUDED_DATA is not None and data not in settings.INCLUDED_DATA:
                     continue
                 log_file = os.path.join(settings.OUTPUT_DIR, f"{data}_{command_name}_{seed}.log")
                 try:
@@ -77,7 +80,9 @@ def main():
             writer.writerow(labels)
             sum_time = 0
             for data in data_names:
-                if data in settings.SKIPPED_DATA:
+                if data in settings.SKIPPED_DATA and not args.include_skipped:
+                    continue
+                if settings.INCLUDED_DATA is not None and data not in settings.INCLUDED_DATA:
                     continue
                 list_score = []
                 list_time = []
@@ -101,7 +106,9 @@ def main():
         y = [[] for _ in range(len(settings.COMMANDS))]
 
         for data in data_names:
-            if data in settings.SKIPPED_DATA:
+            if data in settings.SKIPPED_DATA and not args.include_skipped:
+                continue
+            if settings.INCLUDED_DATA is not None and data not in settings.INCLUDED_DATA:
                 continue
             datas = []
             for index, command_name in enumerate(settings.COMMANDS.keys()):
@@ -145,7 +152,9 @@ def main():
         assert len(settings.COMMANDS) == 1, "Iter mapping only supports one experiment"
         for command_name in settings.COMMANDS.keys():
             for data in data_names:
-                if data in settings.SKIPPED_DATA:
+                if data in settings.SKIPPED_DATA and not args.include_skipped:
+                    continue
+                if settings.INCLUDED_DATA is not None and data not in settings.INCLUDED_DATA:
                     continue
                 list_iters = []
                 for seed in settings.SEEDS:

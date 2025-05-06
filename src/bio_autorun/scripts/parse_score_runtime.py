@@ -48,6 +48,7 @@ def main():
     )
     parser.add_argument("--include-skipped", action="store_true", help="Include skipped data in the output")
     parser.add_argument("--print-iter-map", action="store_true", help="Print the iteration mapping")
+    parser.add_argument("--no-epsilon", action="store_true", help="Disable the use of epsilon for comparison")
     args = parser.parse_args()
 
     settings = import_settings(args.settings)
@@ -105,6 +106,8 @@ def main():
         x = [[] for _ in range(len(settings.COMMANDS))]
         y = [[] for _ in range(len(settings.COMMANDS))]
 
+        squared_diff = [[] for _ in range(len(settings.COMMANDS))]
+
         for data in data_names:
             if data in settings.SKIPPED_DATA and not args.include_skipped:
                 continue
@@ -130,6 +133,15 @@ def main():
                 # print(diff_time, datas[1][1], datas[0][1])
                 x[i].append(diff_score)
                 y[i].append(diff_time)
+            
+            best_score = -10**18
+            for i in range(len(settings.COMMANDS)):
+                best_score = max(best_score, datas[i][0])
+            print(f"Best score for {data}: {best_score}")
+            for i in range(len(settings.COMMANDS)):
+                squared_diff[i].append((datas[i][0] - best_score) ** 2)
+        for i in range(len(settings.COMMANDS)):
+            print(f"Average squared difference for {list(settings.COMMANDS)[i]}: {sum(squared_diff[i]) / len(squared_diff[i])}")
         for i in range(1, len(settings.COMMANDS)):
             plt.clf()
             plt.scatter(x[i], y[i], s=3)
@@ -141,12 +153,17 @@ def main():
             og_better = 0
             cur_better = 0
             for diff_score in x[i]:
-                if abs(diff_score) > 0.1:
+                if args.no_epsilon:
                     if diff_score > 0:
                         cur_better += 1
                     else:
                         og_better += 1
-            print(f"{list(settings.COMMANDS)[i]} better: {cur_better}, {list(settings.COMMANDS)[0]} better: {og_better}")
+                elif abs(diff_score) > 0.1:
+                    if diff_score > 0:
+                        cur_better += 1
+                    else:
+                        og_better += 1
+            print(f"{list(settings.COMMANDS)[i]} better: {cur_better}, {list(settings.COMMANDS)[0]} better: {og_better}, ratio: {(cur_better - og_better) / len(x[i])}")
     
     if args.print_iter_map:
         assert len(settings.COMMANDS) == 1, "Iter mapping only supports one experiment"

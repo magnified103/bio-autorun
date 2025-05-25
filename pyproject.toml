@@ -23,3 +23,6 @@ Issues = "https://github.com/magnified103/bio-autorun/issues"
 [project.scripts]
 autorun_iqtree = "bio_autorun.scripts.iqtree:main"
 slurm_iqtree = "bio_autorun.scripts.iqtree_slurm:main"
+slurm_set_limit = "bio_autorun.scripts.iqtree_slurm:set_limit"
+parse_model_finder = "bio_autorun.scripts.parse_model_finder:main"
+parse_score_runtime = "bio_autorun.scripts.parse_score_runtime:main"

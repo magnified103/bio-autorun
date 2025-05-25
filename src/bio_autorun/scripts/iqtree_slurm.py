@@ -32,6 +32,7 @@ def main():
     parser.add_argument("--only-skipped", action="store_true", help="Only run skipped data")
     parser.add_argument("-o", "--output", default="iqtree.cmd", help="Path to the output script", type=argparse.FileType("w"))
     parser.add_argument("--log-file", default="iqtree.log", help="Path to the log file")
+    parser.add_argument("--skip-data-with-log", action="store_true", help="Skip data files with log files")
     args = parser.parse_args()
     logging.basicConfig(level=logging.INFO, handlers=[
         logging.FileHandler(args.log_file),
@@ -77,13 +78,19 @@ def main():
                 if os.path.exists(prefix + ".iqtree"):
                     logger.info(f"Job {job_name} already exists. Skipping.")
                     continue
+                if args.skip_data_with_log and os.path.exists(prefix + ".log"):
+                    logger.info(f"Log file for {job_name} already exists. Skipping.")
+                    continue
                 job_cmd = f"{command_str} -s {os.path.join(settings.DATA_DIR, data)} -m {settings.MODELS[data]} --prefix {prefix} --seed {seed}"
                 if data in settings.ITERS:
                     job_cmd += f" -n {settings.ITERS[data]}"
+                if data in settings.TIME_LIMIT:
+                    job_cmd += f" -maxtime {settings.TIME_LIMIT[data]}"
                 args.output.write(job_cmd + "\n")
                 number_of_jobs += 1
 
     args.slurm_output.write("#!/bin/bash\n")
+    args.slurm_output.write(f"#SBATCH --hold\n")
     args.slurm_output.write(f"#SBATCH --job-name={settings.NAME}\n")
     args.slurm_output.write(f"#SBATCH --ntasks=1\n")
     args.slurm_output.write(f"#SBATCH --cpus-per-task=1\n")
@@ -91,3 +98,16 @@ def main():
     args.slurm_output.write(f"#SBATCH --output=slurm-log/slurm-%A_%a.out\n")
     args.slurm_output.write(f"command=$(sed \"${{SLURM_ARRAY_TASK_ID}}q;d\" {args.output.name})\n")
     args.slurm_output.write("eval $command\n")
+
+def set_limit():
+    parser = argparse.ArgumentParser(description="Set time limit for iqtree jobs.")
+    parser.add_argument("jobid", help="Job ID to set the time limit for")
+    parser.add_argument("input", nargs='?', default="iqtree.cmd", help="Path to the input script", type=argparse.FileType("r"))
+
+    args = parser.parse_args()
+    for i, cmd in enumerate(args.input.readlines()):
+        if "-maxtime" in cmd:
+            limit = int(cmd.split("-maxtime")[1].split()[0])
+            update_cmd = f"sudo scontrol update jobid={args.jobid}_{i+1} TimeLimit={limit+10}"
+            print(update_cmd, flush=True)
+            os.system(update_cmd)

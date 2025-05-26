@@ -1,7 +1,5 @@
-class Dataset:
-    def get_msa_list(self):
-        raise NotImplementedError()
+from collections.abc import Sequence
 
 
-class DatasetParser:
+class Dataset(Sequence):
     pass

@@ -37,7 +37,8 @@ class SlurmExecutor(Executor):
                     f.write(f"{cmd}\n")
             with open(self.config.batch_script_path, 'w') as f:
                 f.write("#!/bin/bash\n")
-                f.write(f"#SBATCH --hold\n")
+                if self.config.hold:
+                    f.write(f"#SBATCH --hold\n")
                 f.write(f"#SBATCH --job-name={self.config.batch_name}\n")
                 f.write(f"#SBATCH --ntasks=1\n")
                 f.write(f"#SBATCH --cpus-per-task=1\n")
@@ -51,7 +52,7 @@ class SlurmExecutor(Executor):
         if isinstance(job.cmd, str):
             self.cmd_list.append(job.cmd)
         else:
-            self.cmd_list.append(" ".join(job.cmd))
+            self.cmd_list.append("\'" + "\' \'".join(job.cmd) + "\'")
         job.submitted_time = datetime.now()
         job.status = JobStatus.SUBMITTED
         self.event_publish(JobStatus.SUBMITTED, job)

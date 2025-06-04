@@ -3,6 +3,7 @@ from typing import override
 import logging
 from bio_autorun.executors.generic import Executor, ExecutorConfig
 from bio_autorun.job import Job, JobStatus
+import os
 
 logger = logging.getLogger(__name__)
 
@@ -32,6 +33,10 @@ class SlurmExecutor(Executor):
     @override
     def exit_loop(self, exc_type=None, exc_value=None, traceback=None):
         if exc_type is None:
+            if os.path.exists(self.config.cmd_list_path):
+                raise FileExistsError(f"Command list file {self.config.cmd_list_path} already exists.")
+            if os.path.exists(self.config.batch_script_path):
+                raise FileExistsError(f"Batch script file {self.config.batch_script_path} already exists.")
             with open(self.config.cmd_list_path, 'w') as f:
                 for cmd in self.cmd_list:
                     f.write(f"{cmd}\n")
@@ -48,7 +53,8 @@ class SlurmExecutor(Executor):
                 f.write("eval $command\n")
         return super().exit_loop(exc_type, exc_value, traceback)
     
-    def submit(self, job):
+    def submit(self, job: Job):
+        job = SlurmJob(name=job.name, cmd=job.cmd, cwd=job.cwd, env=job.env, shell=job.shell)
         if isinstance(job.cmd, str):
             self.cmd_list.append(job.cmd)
         else:

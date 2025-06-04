@@ -31,9 +31,10 @@ def treebase_classifier(name) -> MSACategory:
 
 
 class MSA:
-    def __init__(self, name=None, path=None, category: MSACategory=None, classifier=treebase_classifier):
+    def __init__(self, name=None, path=None, category: MSACategory=None, classifier=treebase_classifier, model_name=None):
         self.name = name
         self.path = path
+        self.model_name = model_name
         self.category: MSACategory = category
         if category is None and classifier is not None:
             self.category = classifier(name)

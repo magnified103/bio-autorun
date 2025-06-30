@@ -13,14 +13,19 @@ class SlurmJob(Job):
 
 
 class SlurmExecutorConfig(ExecutorConfig):
-    def __init__(self, batch_name, batch_script_path: str, cmd_list_path: str, hold: bool = False):
+    def __init__(self, batch_name, batch_script_path: str, cmd_list_path: str, hold: bool = False,
+                 srun_alloc: bool = False, srun_runner_script: str = None):
         self.batch_name = batch_name
         self.batch_script_path = batch_script_path
         self.cmd_list_path = cmd_list_path
         self.hold = hold
+        self.srun_alloc = srun_alloc
+        self.srun_runner_script = srun_runner_script
 
 
 class SlurmExecutor(Executor):
+    config: SlurmExecutorConfig
+
     def __init__(self, config: SlurmExecutorConfig):
         super().__init__(config)
         self.cmd_list: list[str] = None
@@ -40,17 +45,34 @@ class SlurmExecutor(Executor):
             with open(self.config.cmd_list_path, 'w') as f:
                 for cmd in self.cmd_list:
                     f.write(f"{cmd}\n")
+            if self.config.srun_alloc and self.config.srun_runner_script:
+                with open(self.config.srun_runner_script, 'w') as f:
+                    # runner script
+                    f.write("#!/bin/bash\n")
+                    f.write("readarray commands < $1\n")
+                    f.write("total=${#commands[@]}\n")
+                    f.write("for (( i=$SLURM_PROCID; i<total; i+=$SLURM_NTASKS )); do\n")
+                    f.write("    eval ${commands[i]} < /dev/null\n")
+                    f.write("done\n")
+                os.chmod(self.config.srun_runner_script, 0o700)
             with open(self.config.batch_script_path, 'w') as f:
                 f.write("#!/bin/bash\n")
                 if self.config.hold:
                     f.write(f"#SBATCH --hold\n")
-                f.write(f"#SBATCH --job-name={self.config.batch_name}\n")
-                f.write(f"#SBATCH --ntasks=1\n")
-                f.write(f"#SBATCH --cpus-per-task=1\n")
-                f.write(f"#SBATCH --array=1-{len(self.cmd_list)}\n")
-                f.write(f"#SBATCH --output=slurm-log/slurm-%A_%a.out\n")
-                f.write(f"command=$(sed \"${{SLURM_ARRAY_TASK_ID}}q;d\" {self.config.cmd_list_path})\n")
-                f.write("eval $command\n")
+                if not self.config.srun_alloc:
+                    f.write(f"#SBATCH --job-name={self.config.batch_name}\n")
+                    f.write(f"#SBATCH --ntasks=1\n")
+                    f.write(f"#SBATCH --cpus-per-task=1\n")
+                    f.write(f"#SBATCH --array=1-{len(self.cmd_list)}\n")
+                    f.write(f"#SBATCH --output=slurm-log/slurm-%A_%a.out\n")
+                    f.write(f"command=$(sed \"${{SLURM_ARRAY_TASK_ID}}q;d\" {self.config.cmd_list_path})\n")
+                    f.write("eval $command\n")
+                else:
+                    assert os.path.exists(self.config.srun_runner_script)
+                    # prealloc mode
+                    f.write(f"#SBATCH --job-name={self.config.batch_name}\n")
+                    f.write(f"#SBATCH --output=slurm-log/slurm-%A.out\n")
+                    f.write(f"srun {self.config.srun_runner_script} {self.config.cmd_list_path}\n")
         return super().exit_loop(exc_type, exc_value, traceback)
     
     def submit(self, job: Job):

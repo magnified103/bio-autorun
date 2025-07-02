@@ -4,12 +4,12 @@ from contextlib import contextmanager
 from bio_autorun.job import Job, JobStatus
 
 
-class ExecutorConfig:
+class BaseExecutorConfig:
     pass
 
 
-class Executor:
-    def __init__(self, config: ExecutorConfig):
+class BaseExecutor:
+    def __init__(self, config: BaseExecutorConfig):
         self.config = config
         self._event_queue = mp.JoinableQueue()
         self._event_subscriptions = []
@@ -65,3 +65,17 @@ class Executor:
 
     def submit(self, job: Job):
         raise NotImplementedError
+
+
+class ExecutorFactory:
+    registry: dict[type, type] = {}
+
+    @classmethod
+    def register(cls, config_class: type, executor_class: type):
+        cls.registry[config_class] = executor_class
+
+    @classmethod
+    def create_executor(cls, config: BaseExecutorConfig) -> 'BaseExecutor':
+        if type(config) not in cls.registry:
+            raise ValueError(f"No executor registered for config type {type(config)}")
+        return cls.registry[type(config)](config)

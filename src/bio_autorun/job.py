@@ -1,19 +1,31 @@
 from datetime import datetime
-from enum import StrEnum
-from typing import Iterable, Optional
+from typing import Optional, Union
+import sys
 
+if sys.version_info < (3, 11):
+    from enum import Enum
 
-class JobStatus(StrEnum):
-    PENDING = "pending"
-    SUBMITTED = "submitted"
-    QUEUED = "queued"
-    STARTED = "started"
-    COMPLETED = "completed"
-    CANCELLED = "cancelled"
+    class JobStatus(str, Enum):
+        PENDING = "pending"
+        SUBMITTED = "submitted"
+        QUEUED = "queued"
+        STARTED = "started"
+        COMPLETED = "completed"
+        CANCELLED = "cancelled"
 
+else:
+    from enum import StrEnum
+
+    class JobStatus(StrEnum):
+        PENDING = "pending"
+        SUBMITTED = "submitted"
+        QUEUED = "queued"
+        STARTED = "started"
+        COMPLETED = "completed"
+        CANCELLED = "cancelled"
 
 class Job:
-    def __init__(self, *, name: str, cmd: str | list[str], env: Optional[dict[str, str]] = None,
+    def __init__(self, *, name: str, cmd: Union[str, list[str]], env: Optional[dict[str, str]] = None,
                  cwd: Optional[str] = None,
                  shell=False,
                  status: JobStatus = JobStatus.PENDING,

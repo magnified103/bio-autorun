@@ -5,7 +5,7 @@ from pathlib import Path
 
 
 class YhDataset(Dataset):
-    def __init__(self, msa_dict: dict[MSACategory, MSA]):
+    def __init__(self, msa_dict: dict[MSACategory, list[str]]):
         self.msa_list: list[MSA] = []
         self.all_list: list[tuple[str, MSA, str]] = []
         for category, subdata_dirs in msa_dict.items():

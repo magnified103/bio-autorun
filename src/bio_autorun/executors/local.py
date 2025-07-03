@@ -1,6 +1,6 @@
 import concurrent.futures
 from concurrent.futures.thread import ThreadPoolExecutor
-from datetime import datetime
+from datetime import datetime, timezone
 import logging
 import subprocess
 from typing_extensions import Optional, override
@@ -57,13 +57,13 @@ class LocalExecutor(BaseExecutor):
             stderr=subprocess.DEVNULL,
         )
         job.pid = proc.pid
-        job.start_time = datetime.now()
+        job.start_time = datetime.now(timezone.utc)
         self.event_publish(JobStatus.STARTED, job)
 
         # wait for the job to finish
         proc.wait()
 
-        job.end_time = datetime.now()
+        job.end_time = datetime.now(timezone.utc)
         job.status = JobStatus.COMPLETED
         job.exit_code = proc.returncode
         self.event_publish(JobStatus.COMPLETED, job)
@@ -72,11 +72,11 @@ class LocalExecutor(BaseExecutor):
         job = LocalJob(
             name=job.name, cmd=job.cmd, cwd=job.cwd, env=job.env, shell=job.shell
         )
-        job.submitted_time = datetime.now()
+        job.submitted_time = datetime.now(timezone.utc)
         job.status = JobStatus.SUBMITTED
         self.event_publish(JobStatus.SUBMITTED, job)
 
-        job.queued_time = datetime.now()
+        job.queued_time = datetime.now(timezone.utc)
         job.status = JobStatus.QUEUED
         self.event_publish(JobStatus.QUEUED, job)
 

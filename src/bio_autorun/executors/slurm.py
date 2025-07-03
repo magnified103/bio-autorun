@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, timezone
 import logging
 import os
 from typing_extensions import override
@@ -22,6 +22,7 @@ class BaseSlurmExecutorConfig(BaseExecutorConfig):
         hold: bool = False,
         **kwargs,
     ):
+        super().__init__(**kwargs)
         self.batch_name = batch_name
         self.batch_script_path = batch_script_path
         self.cmd_list_path = cmd_list_path
@@ -48,7 +49,7 @@ class BaseSlurmExecutor(BaseExecutor):
             self.cmd_list.append(job.cmd)
         else:
             self.cmd_list.append("'" + "' '".join(job.cmd) + "'")
-        job.submitted_time = datetime.now()
+        job.submitted_time = datetime.now(timezone.utc)
         job.status = JobStatus.SUBMITTED
         self.event_publish(JobStatus.SUBMITTED, job)
 
@@ -88,6 +89,8 @@ class PreallocSlurmExecutorConfig(BaseSlurmExecutorConfig):
 
 
 class PreallocSlurmExecutor(BaseSlurmExecutor):
+    config: PreallocSlurmExecutorConfig
+
     @override
     def exit_loop(self, exc_type=None, exc_value=None, traceback=None):
         if exc_type is None:

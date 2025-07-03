@@ -11,7 +11,9 @@ requires-python = ">=3.8"
 dependencies = [
     "typing_extensions",
     "numpy",
-    "matplotlib"
+    "matplotlib",
+    "requests",
+    "Flask",
 ]
 
 #[project.optional-dependencies]
@@ -27,3 +29,4 @@ slurm_iqtree = "bio_autorun.scripts.iqtree_slurm:main"
 slurm_set_limit = "bio_autorun.scripts.iqtree_slurm:set_limit"
 parse_model_finder = "bio_autorun.scripts.parse_model_finder:main"
 parse_score_runtime = "bio_autorun.scripts.parse_score_runtime:main"
+generate_slurm_worker = "bio_autorun.scripts.generate_slurm_worker:main"

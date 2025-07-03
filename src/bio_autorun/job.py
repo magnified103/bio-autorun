@@ -47,3 +47,34 @@ class Job:
 
     def __str__(self):
         return self.name
+
+    def to_json(self) -> dict:
+        return {
+            "name": self.name,
+            "cmd": self.cmd,
+            "env": self.env,
+            "cwd": self.cwd,
+            "shell": self.shell,
+            "status": self.status.value,
+            "exit_code": self.exit_code,
+            "submitted_time": self.submitted_time.isoformat() if self.submitted_time else None,
+            "queued_time": self.queued_time.isoformat() if self.queued_time else None,
+            "start_time": self.start_time.isoformat() if self.start_time else None,
+            "end_time": self.end_time.isoformat() if self.end_time else None
+        }
+
+    @classmethod
+    def from_json(cls, data: dict):
+        return cls(
+            name=data["name"],
+            cmd=data["cmd"],
+            env=data.get("env"),
+            cwd=data.get("cwd"),
+            shell=data.get("shell", False),
+            status=data.get("status", JobStatus.PENDING),
+            exit_code=data.get("exit_code"),
+            submitted_time=datetime.fromisoformat(data["submitted_time"]) if data.get("submitted_time") else None,
+            queued_time=datetime.fromisoformat(data["queued_time"]) if data.get("queued_time") else None,
+            start_time=datetime.fromisoformat(data["start_time"]) if data.get("start_time") else None,
+            end_time=datetime.fromisoformat(data["end_time"]) if data.get("end_time") else None
+        )

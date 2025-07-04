@@ -2,21 +2,23 @@ import argparse
 import glob
 import os
 import logging
+from typing import Iterable, Union
 
 from bio_autorun.datasets.generic import Dataset
 from bio_autorun.job import Job
+from bio_autorun.msa import MSA
 from bio_autorun.task import Task
 
 logger = logging.getLogger(__name__)
 
 
 def build_tree_search_parser(parser: argparse.ArgumentParser):
-    parser.add_argument("--rerun_incomplete", action="store_true", default=True,
-                        help="If set, rerun incomplete jobs. True by default.")
+    parser.add_argument("--rerun-incomplete", action="store_true", default=False,
+                        help="If set, rerun incomplete jobs. False by default.")
 
 
 class MPBootTreeSearch(Task):
-    def __init__(self, *, commands: dict[str, str], dataset: Dataset, output: str, seeds: list[int], **kwargs):
+    def __init__(self, *, commands: dict[str, str], dataset: Union[Dataset, Iterable[MSA]], output: str, seeds: list[int], **kwargs):
         super().__init__(**kwargs)
         self.commands = commands
         self.dataset = dataset
@@ -49,6 +51,7 @@ class MPBootTreeSearch(Task):
                                     os.remove(file)
                             else:
                                 logger.warning(f"Log file for {job_name} already exists. Skipping.")
+                                continue
                         self.executor.submit(Job(
                             name=job_name,
                             cmd=command+[

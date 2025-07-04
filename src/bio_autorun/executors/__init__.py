@@ -1,3 +1,4 @@
 from bio_autorun.executors.base import BaseExecutorConfig, ExecutorFactory
 from bio_autorun.executors.local import LocalExecutorConfig
+from bio_autorun.executors.sched import SchedulerExecutorConfig
 from bio_autorun.executors.slurm import PreallocSlurmExecutorConfig, SlurmExecutorConfig

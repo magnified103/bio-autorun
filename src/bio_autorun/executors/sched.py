@@ -46,3 +46,6 @@ class SchedulerExecutor(BaseExecutor):
         )
         response.raise_for_status()
         return super().exit_loop(exc_type, exc_value, traceback)
+
+
+ExecutorFactory.register(SchedulerExecutorConfig, SchedulerExecutor)

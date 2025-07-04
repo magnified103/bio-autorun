@@ -35,8 +35,13 @@ class MPBootTreeSearch(Task):
                         job_name = f"{msa.name}_{command_name}_{seed}"
                         prefix = f"{self.output}/{job_name}"
                         if os.path.exists(prefix + ".mpboot"):
-                            logger.info(f"Job {job_name} already exists. Skipping.")
-                            continue
+                            if os.path.exists(prefix + ".log"):
+                                # The log might have been overwritten
+                                with open(prefix + ".log", "r") as log_file:
+                                    log_content = log_file.read()
+                                    if "Analysis results written to: " in log_content:
+                                        logger.info(f"Job {job_name} already completed. Skipping.")
+                                        continue
                         if os.path.exists(prefix + ".log"):
                             if rerun_incomplete:
                                 logger.info(f"Log file for {job_name} already exists. Rerunning.")

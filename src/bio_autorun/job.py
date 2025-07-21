@@ -29,6 +29,7 @@ class Job:
                  cwd: Optional[str] = None,
                  shell=False,
                  stdin: Optional[str] = None, stdout: Optional[str] = None, stderr: Optional[str] = None,
+                 stdin_str: Optional[str] = None,
                  status: JobStatus = JobStatus.PENDING,
                  exit_code: Optional[int] = None,
                  submitted_time: Optional[datetime] = None, queued_time: Optional[datetime] = None,
@@ -42,6 +43,7 @@ class Job:
         self.stdin = stdin
         self.stdout = stdout
         self.stderr = stderr
+        self.stdin_str = stdin_str
         self.status = status
         self.submitted_time = submitted_time
         self.queued_time = queued_time
@@ -62,6 +64,7 @@ class Job:
             "stdin": self.stdin,
             "stdout": self.stdout,
             "stderr": self.stderr,
+            "stdin_str": self.stdin_str,
             "status": self.status.value,
             "exit_code": self.exit_code,
             "submitted_time": self.submitted_time.isoformat() if self.submitted_time else None,
@@ -81,6 +84,7 @@ class Job:
             stdin=data.get("stdin"),
             stdout=data.get("stdout"),
             stderr=data.get("stderr"),
+            stdin_str=data.get("stdin_str"),
             status=data.get("status", JobStatus.PENDING),
             exit_code=data.get("exit_code"),
             submitted_time=datetime.fromisoformat(data["submitted_time"]) if data.get("submitted_time") else None,

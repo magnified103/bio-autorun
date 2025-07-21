@@ -27,7 +27,10 @@ while retries < MAX_RETRIES:
         if job.stdin:
             stdin = open(job.stdin, 'r')
         else:
-            stdin = subprocess.DEVNULL
+            if job.stdin_str:
+                stdin = subprocess.PIPE
+            else:
+                stdin = subprocess.DEVNULL
         
         if job.stdout:
             stdout = open(job.stdout, 'w')
@@ -52,6 +55,10 @@ while retries < MAX_RETRIES:
             stdout=stdout,
             stderr=stderr,
         )
+
+        if job.stdin_str:
+            inp = job.stdin_str.encode('utf-8')
+            proc.communicate(input=inp)
 
         # Wait for the job to finish
         proc.wait()

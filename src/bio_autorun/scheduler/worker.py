@@ -24,15 +24,33 @@ while retries < MAX_RETRIES:
         job.start_time = datetime.now(timezone.utc)
         job.status = JobStatus.STARTED
 
+        if job.stdin:
+            stdin = open(job.stdin, 'r')
+        else:
+            stdin = subprocess.DEVNULL
+        
+        if job.stdout:
+            stdout = open(job.stdout, 'w')
+        else:
+            stdout = subprocess.DEVNULL
+        
+        if job.stderr:
+            if job.stderr == "stdout":
+                stderr = subprocess.STDOUT
+            else:
+                stderr = open(job.stderr, 'w')
+        else:
+            stderr = subprocess.DEVNULL
+
         # Start the job
         proc = subprocess.Popen(
             job.cmd,
             cwd=job.cwd,
             env=job.env,
             shell=job.shell,
-            stdin=subprocess.DEVNULL,
-            stdout=subprocess.DEVNULL,
-            stderr=subprocess.DEVNULL,
+            stdin=stdin,
+            stdout=stdout,
+            stderr=stderr,
         )
 
         # Wait for the job to finish

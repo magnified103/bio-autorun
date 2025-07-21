@@ -28,6 +28,7 @@ class Job:
     def __init__(self, *, name: str, cmd: Union[str, list[str]], env: Optional[dict[str, str]] = None,
                  cwd: Optional[str] = None,
                  shell=False,
+                 stdin: Optional[str] = None, stdout: Optional[str] = None, stderr: Optional[str] = None,
                  status: JobStatus = JobStatus.PENDING,
                  exit_code: Optional[int] = None,
                  submitted_time: Optional[datetime] = None, queued_time: Optional[datetime] = None,
@@ -38,6 +39,9 @@ class Job:
         self.env = env
         self.cwd = cwd
         self.shell = shell
+        self.stdin = stdin
+        self.stdout = stdout
+        self.stderr = stderr
         self.status = status
         self.submitted_time = submitted_time
         self.queued_time = queued_time
@@ -55,6 +59,9 @@ class Job:
             "env": self.env,
             "cwd": self.cwd,
             "shell": self.shell,
+            "stdin": self.stdin,
+            "stdout": self.stdout,
+            "stderr": self.stderr,
             "status": self.status.value,
             "exit_code": self.exit_code,
             "submitted_time": self.submitted_time.isoformat() if self.submitted_time else None,
@@ -71,6 +78,9 @@ class Job:
             env=data.get("env"),
             cwd=data.get("cwd"),
             shell=data.get("shell", False),
+            stdin=data.get("stdin"),
+            stdout=data.get("stdout"),
+            stderr=data.get("stderr"),
             status=data.get("status", JobStatus.PENDING),
             exit_code=data.get("exit_code"),
             submitted_time=datetime.fromisoformat(data["submitted_time"]) if data.get("submitted_time") else None,

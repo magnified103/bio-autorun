@@ -1,13 +1,10 @@
-import argparse
 import glob
 import os
 import logging
 import re
-from typing import Iterable, Optional, Union
+from typing import Iterable, Union
 
 import pandas as pd
-import matplotlib.pyplot as plt
-import numpy as np
 
 from bio_autorun.datasets.generic import Dataset
 from bio_autorun.job import Job
@@ -17,31 +14,26 @@ from bio_autorun.task import Task
 logger = logging.getLogger(__name__)
 
 
-def build_tree_search_parser(parser: argparse.ArgumentParser):
-    parser.add_argument("--rerun-incomplete", action="store_true", default=False,
-                        help="If set, rerun incomplete jobs. False by default.")
-    parser.add_argument("--overwrite-check", action="store_true", default=False,
-                        help="If set, perform the log overwrite check. False by default.")
-
-def build_analysis_parser(parser: argparse.ArgumentParser):
-    parser.add_argument("--analysis-output", type=str, required=True,
-                        help="Directory to save analysis results.")
-    parser.add_argument("--no-parse", action="store_true", default=False,
-                        help="If set, skip parsing the logs. Useful for debugging.")
-    parser.add_argument("--tnt-csv", type=str, required=False, help="Path to TNT CSV file for analysis.")
-
-class MPBootTreeSearch(Task):
-    def __init__(self, *, commands: dict[str, str], dataset: Union[Dataset, Iterable[MSA]], output: str, seeds: list[int],
-                 skipped_jobs: list[str] = [], **kwargs):
-        super().__init__(**kwargs)
+class MPBootTreeSearchBase(Task):
+    def __init__(self, name: str, *, commands: dict[str, str], dataset: Union[Dataset, Iterable[MSA]], output: str,
+                 seeds: list[int], skipped_jobs: list[str] = [], **kwargs):
+        super().__init__(name, **kwargs)
         self.commands = commands
         self.dataset = dataset
         self.output = output
         self.seeds = seeds
         self.skipped_jobs = skipped_jobs
 
-    @Task.register("tree_search", build=build_tree_search_parser)
-    def run_tree_search(self, *args, rerun_incomplete: bool, overwrite_check: bool, **kwargs):
+
+class MPBootTreeSearch(MPBootTreeSearchBase):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.parser.add_argument("--rerun-incomplete", action="store_true", default=False,
+                        help="If set, rerun incomplete jobs. False by default.")
+        self.parser.add_argument("--overwrite-check", action="store_true", default=False,
+                        help="If set, perform the log overwrite check. False by default.")
+
+    def __call__(self, *args, rerun_incomplete: bool, overwrite_check: bool, **kwargs):
         with self.executor.acquire():
             if not os.path.exists(self.output):
                 logger.info(f"Creating output directory: {self.output}")
@@ -82,7 +74,14 @@ class MPBootTreeSearch(Task):
                             ]
                         ))
 
-    def _parse_log(self):
+
+class MPBootParseLog(MPBootTreeSearchBase):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.parser.add_argument("--analysis-output", type=str, required=True,
+                        help="Directory to save analysis results.")
+
+    def __call__(self, *, analysis_output: str, **kwargs):
         # list of raw scores and times for each command and MSA
         scores_per_command: dict[str, dict[str, list[int]]] = {}
         times_per_command: dict[str, dict[str, list[int]]] = {}
@@ -131,86 +130,4 @@ class MPBootTreeSearch(Task):
             scores_df = pd.DataFrame(scores_per_command[command_name].items(), columns=["MSA", "Scores"])
             times_df = pd.DataFrame(times_per_command[command_name].items(), columns=["MSA", "Runtimes"])
             df = pd.merge(scores_df, times_df, on="MSA")
-            df.to_csv(f"{self.analysis_output}/{command_name}.csv", index=False)
-
-    def _analyze(self):
-        self.dfs: list[pd.DataFrame] = []
-
-        # compute the min and avg
-        for i, command_name in enumerate(self.commands.keys()):
-            df = pd.read_csv(f"{self.analysis_output}/{command_name}.csv")
-            df[f"AvgScore_{i}"] = df["Scores"].apply(lambda x: round(sum(eval(x)) / len(eval(x))))
-            df[f"AvgRuntime_{i}"] = df["Runtimes"].apply(lambda x: sum(eval(x)) / len(eval(x)))
-            df[f"MinScore_{i}"] = df["Scores"].apply(lambda x: min(eval(x)))
-            df.drop(columns=["Scores", "Runtimes"], inplace=True)
-            self.dfs.append(df)
-
-        combined_df = self.dfs[0].copy()
-        for i in range(1, len(self.dfs)):
-            combined_df = pd.merge(combined_df, self.dfs[i], on="MSA")
-        self.combined_df = combined_df
-        self.combined_cmds = list(self.commands.keys())
-
-        # add TNT
-        if self.tnt_csv:
-            self.combined_cmds.append("TNT")
-            tnt_df = pd.read_csv(self.tnt_csv)
-            tnt_df["Time (secs)"] = tnt_df["Time (secs)"] / 3600  # convert to hours
-            # rename columns
-            tnt_df[f"MinScore_{len(self.dfs)}"] = tnt_df["MP Score"]
-            tnt_df.rename(columns={"Data": "MSA", "MP Score": f"AvgScore_{len(self.dfs)}", f"Time (secs)": f"AvgRuntime_{len(self.dfs)}"}, inplace=True)
-            tnt_df["MSA"] = tnt_df["MSA"].apply(lambda x: x + ".phy")
-
-            # merge
-            combined_df = pd.merge(combined_df, tnt_df, on="MSA")
-
-        logger.info(f"Number of MSAs: {len(combined_df)}/{len(self.dataset)}")
-
-
-        # calculate the best score
-        combined_df["BestScore"] = combined_df[[f"MinScore_{i}" for i in range(len(self.combined_cmds))]].min(axis=1)
-
-        # calculate everything else
-        self.best_score_hits = []
-        self.total_runtimes = []
-        for i, command_name in enumerate(self.combined_cmds):
-            best_score_hit = (combined_df[f"AvgScore_{i}"] == combined_df["BestScore"]).sum()
-            total_runtime = combined_df[f"AvgRuntime_{i}"].sum()
-            self.best_score_hits.append(best_score_hit)
-            self.total_runtimes.append(total_runtime)
-
-    def _plot_analysis(self):
-        # Plotting
-        x = np.arange(len(self.combined_cmds))
-        width = 0.35
-        fig, ax1 = plt.subplots(figsize=(10, 6))
-        color1 = 'tab:blue'
-        color2 = 'tab:red'
-        ax1.set_xlabel('Command')
-        ax1.set_ylabel('Best Score Hit', color=color1)
-        bar1 = ax1.bar(x - width/2, self.best_score_hits, width, color=color1, alpha=0.6, label='Best Score Hit')
-        ax1.tick_params(axis='y', labelcolor=color1)
-        ax1.set_xticks(x)
-        ax1.set_xticklabels(self.combined_cmds)
-        ax1.bar_label(bar1)
-
-        ax2 = ax1.twinx()
-        ax2.set_ylabel('Total Runtime (h)', color=color2)
-        bar2 = ax2.bar(x + width/2, self.total_runtimes, width, color=color2, alpha=0.4, label='Total Runtime')
-        ax2.tick_params(axis='y', labelcolor=color2)
-        ax2.bar_label(bar2, fmt='%.2f')
-
-        fig.tight_layout()
-        fig.suptitle(f'{len(self.combined_df)}/{len(self.dataset)} MSA, {len(self.seeds)} seeds')
-        fig.subplots_adjust(left=0.1, right=0.9, top=0.9, bottom=0.1)
-        fig.savefig(f"{self.analysis_output}/analysis_results.svg")
-        # plt.show()
-
-    @Task.register("analyze", build=build_analysis_parser)
-    def run_analysis(self, analysis_output: str, no_parse: bool, tnt_csv: Optional[str] = None, **kwargs):
-        self.analysis_output = analysis_output
-        self.tnt_csv = tnt_csv
-        if not no_parse:
-            self._parse_log()
-        self._analyze()
-        self._plot_analysis()
+            df.to_csv(f"{analysis_output}/{command_name}.csv", index=False)
